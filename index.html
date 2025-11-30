@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mercado Pago</title>
+  
+  <!-- PWA Meta Tags -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#FFDB15">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MP Simulator">
+  
+  <style>
+    /* --- Reseteo y Estilos Base --- */
+    :root {
+      --blue: #3483FA;
+      --green: #00A650;
+      --yellow: #FFDB15;
+      --dark-text: #333333;
+      --medium-text: #666666;
+      --light-text: #999999;
+      --background-gray: #f5f5f5;
+      --white: #FFFFFF;
+      --light-blue-bg: #EAF2FF;
+      --disabled-bg: #EBEBEB;
+      --disabled-text: #B5B5B5;
+      --dark-card-bg: #1F222A;
+    }
+
+    body, h1, h2, p, button, a, input, sup {
+      margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; color: var(--dark-text);
+    }
+    button, a { cursor: pointer; }
+    input { border: none; outline: none; }
+    * { box-sizing: border-box; }
+
+    /* --- LÃ³gica de Pantallas con Transiciones --- */
+    .screen {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s ease-in-out, visibility 0.2s;
+        background-color: var(--white);
+    }
+    .screen.active {
+        opacity: 1;
+        visibility: visible;
+        z-index: 5;
+    }
+    #screen-home, #screen-receipt {
+        background: transparent;
+    }
+
+    /* --- Contenedor Principal --- */
+    .mobile-screen {
+      width: 375px; height: 812px; background: var(--white); display: flex; flex-direction: column; overflow: hidden; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    .content-area { flex-grow: 1; padding: 16px; background-color: var(--white); overflow-y: auto; }
+    .main-footer { padding: 16px; background-color: var(--white); box-shadow: 0 -2px 5px rgba(0,0,0,0.05); z-index: 10; }
+
+    .btn { border: none; border-radius: 6px; padding: 14px; font-size: 16px; font-weight: 600; width: 100%; text-align: center; }
+    .btn-primary { background-color: var(--blue); color: var(--white); }
+    .btn:disabled { background-color: var(--disabled-bg); color: var(--disabled-text); cursor: not-allowed; }
+    .icon-btn { background: none; border: none; padding: 4px; display: flex; align-items: center; justify-content: center;}
+    .icon-btn svg { width: 24px; height: 24px; fill: var(--dark-text); }
+    .eye-icon { width: 24px; height: 24px; fill: var(--light-text); margin-left: 8px; }
+
+    /* --- Pantalla 1: Home --- */
+    #screen-home { background-color: var(--background-gray); }
+    .home-header { background-color: var(--yellow); padding: 16px; display: flex; justify-content: space-between; align-items: center; }
+    .user-greet { display: flex; align-items: center; font-weight: 500; font-size: 14px; }
+    .user-greet svg { width: 24px; height: 24px; margin-right: 8px; fill: var(--dark-text);}
+    .header-actions { display: flex; align-items: center; }
+    .header-actions svg { width: 24px; height: 24px; fill: var(--dark-text); margin-right: 8px; }
+    .help-btn { background: rgba(0,0,0,0.1); border: none; border-radius: 12px; padding: 6px 10px; font-size: 12px; font-weight: 500; }
+    .home-content { padding-bottom: 90px; }
+    .home-balance-card { background-color: var(--white); padding: 16px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .balance-info-top { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; }
+    .balance-info-top a { color: var(--blue); text-decoration: none; font-weight: 500; }
+    .balance-amount { font-size: 32px; font-weight: 500; display: flex; align-items: flex-start; }
+    .balance-amount sup { font-size: 16px; font-weight: 500; margin-left: 2px; }
+    .investment-banner { background-color: #E7F9F0; border-radius: 6px; padding: 10px; margin-top: 16px; display: flex; align-items: center; font-size: 14px; }
+    .investment-banner svg:first-child { width: 20px; height: 20px; fill: var(--green); margin-right: 8px; }
+    .investment-yield { margin-left: auto; margin-right: 8px; display: flex; align-items: center; color: var(--green); font-weight: 500; }
+    .investment-yield svg { width: 16px; height: 16px; fill: var(--green); }
+    .investment-banner a { color: var(--blue); text-decoration: none; font-weight: 500; }
+    .home-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-top: 24px; }
+    .action-btn { background: none; border: none; font-size: 12px; text-align: center; cursor: pointer; }
+    .action-btn .icon-bg { width: 56px; height: 56px; background-color: #EAF2FF; border-radius: 50%; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; }
+    .action-btn .icon-bg svg { width: 24px; height: 24px; fill: var(--blue); }
+
+    /* --- Pantalla 2: Contacto --- */
+    .app-header-white { padding: 16px; display: flex; align-items: center; border-bottom: 1px solid #f0f0f0; min-height: 60px; }
+    .app-header-white h2 { font-size: 18px; font-weight: 600; flex-grow: 1; text-align: center; padding-right: 72px; }
+    .app-header-white .icon-btn:not(.back-btn) { margin-left: 8px; }
+    .search-box { position: relative; }
+    .search-box input { width: 100%; padding: 12px 40px 12px 16px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
+    .search-box svg { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; fill: var(--light-text); }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; }
+    .section-title { font-weight: 600; margin: 0; font-size: 16px; }
+    .favorites-btn { border: 1px solid #ddd; background: none; border-radius: 16px; padding: 6px 12px; font-size: 14px; font-weight: 500; }
+    .contact-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+    .contact-item { display: flex; align-items: center; padding: 8px 0; cursor: pointer; transition: background-color 0.2s ease; }
+    .contact-item:hover { background-color: #f9f9f9; }
+    .contact-initials { width: 40px; height: 40px; border-radius: 50%; background-color: #f0f0f0; display: flex; justify-content: center; align-items: center; font-weight: 500; margin-right: 12px; color: var(--dark-text); flex-shrink: 0;}
+    .contact-name { font-size: 16px; font-weight: 400; color: var(--dark-text); }
+    .contact-options { margin-left: auto; width: 24px; height: 24px; fill: var(--light-text); flex-shrink: 0;}
+
+    /* --- AJUSTE CLAVE: Pantalla 3: Monto --- */
+    #screen-amount .content-area {
+        display: flex;
+        flex-direction: column;
+    }
+    #screen-amount .main-footer {
+        margin-top: auto; /* EMPUJA EL BOTÃ“N HACIA ABAJO */
+        box-shadow: none; /* QUITA LA SOMBRA DEL FOOTER EN ESTA PANTALLA */
+        padding-bottom: 24px; /* AÃ‘ADE ESPACIO INFERIOR */
+    }
+    .column-center { display: flex; flex-direction: column; align-items: center; }
+    .recipient-summary { display: flex; align-items: center; margin-top: 24px; }
+    .recipient-initials { width: 40px; height: 40px; border-radius: 50%; background-color: #f0f0f0; display: flex; justify-content: center; align-items: center; font-weight: 500; margin-right: 12px; }
+    #amount-recipient-name { font-size: 18px; font-weight: 500; }
+    .amount-input-container { display: flex; align-items: center; font-size: 60px; font-weight: 300; margin: 40px 0 10px; color: #bbb; position: relative; }
+    .currency-symbol { margin-right: 4px; }
+    #amount-display { color: var(--dark-text); min-height: 70px; }
+    #amount-input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: default; }
+    .cursor { width: 2px; height: 60px; background-color: var(--blue); animation: blink 1s step-end infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .available-balance { color: var(--medium-text); display: flex; align-items: center; font-size: 14px; }
+    .quick-amount { background-color: var(--light-blue-bg); color: var(--blue); padding: 4px 12px; border: none; border-radius: 12px; font-size: 14px; font-weight: 500; margin: 24px 0; }
+    .motive { color: var(--medium-text); display: flex; align-items: center; font-size: 14px; }
+    .motive svg { fill: var(--medium-text); width: 20px; height: 20px; }
+
+    /* --- Pantalla 4: ConfirmaciÃ³n --- */
+    .confirm-content { display: flex; flex-direction: column; align-items: center; padding-top: 40px; }
+    .confirm-icon { width: 64px; height: 64px; border-radius: 50%; background-color: var(--light-blue-bg); margin-bottom: 16px; display: flex; align-items: center; justify-content: center; }
+    .confirm-icon svg { width: 32px; height: 32px; fill: var(--blue); }
+    .confirm-recipient h2 { font-size: 24px; font-weight: 400; text-align: center; }
+    .confirm-recipient p { color: var(--medium-text); text-align: center; margin-top: 4px; }
+    .confirm-total { display: flex; justify-content: space-between; width: 100%; border-top: 1px solid #f0f0f0; padding: 24px 0; margin-top: 40px; font-size: 16px; }
+    .confirm-total span:last-child { font-weight: 600; }
+    .confirm-payment-method { position: relative; width: 100%; background-color: var(--dark-card-bg); border-radius: 8px; padding: 16px; display: flex; align-items: center; overflow: hidden; }
+    .payment-card-logo { width: 36px; height: 24px; background: linear-gradient(#FF6F00 50%, #EB001B 50%); border-radius: 4px; margin-right: 12px; }
+    .payment-card-text { display: flex; flex-direction: column; z-index: 1; }
+    #payment-card-balance { color: var(--white); font-weight: 500; font-size: 16px; }
+    .payment-card-label { color: #aaa; font-size: 12px; }
+    .card-ghost-text { position: absolute; right: -20px; bottom: -30px; font-size: 60px; font-weight: 800; color: rgba(255,255,255,0.05); z-index: 0; }
+    .commission-banner { width: 100%; background-color: #E7F9F0; color: var(--green); font-weight: 500; text-align: center; padding: 12px; border-radius: 0 0 8px 8px; }
+
+    /* --- Pantalla 5: Comprobante --- */
+    .receipt-background { display: flex; flex-direction: column; height: 100%; background: linear-gradient(to bottom, var(--green) 60px, #e8f5ee 120px, var(--background-gray) 200px); }
+    .receipt-header { background-color: transparent; height: 60px; padding: 20px; display: flex; justify-content: flex-end; align-items: center; }
+    .receipt-app-content { flex-grow: 1; padding: 0 16px 16px; }
+    .card { background-color: var(--white); border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 18px; margin-bottom: 12px; }
+    .confirmation-card { display: flex; justify-content: space-between; align-items: flex-start; }
+    .confirmation-text h1 { font-size: 18px; font-weight: 700; line-height: 1.3; margin-bottom: 6px; }
+    .confirmation-text p { font-size: 14px; font-weight: 400; color: var(--medium-text); }
+    .profile-icon svg { min-width: 48px; }
+    .action-card { padding: 16px; }
+    .balance-info { display: flex; align-items: center; margin-bottom: 20px; }
+    .wallet-icon-container { width: 44px; height: 44px; background-color: #FFDA1A; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-right: 12px; }
+    .balance-text .amount { font-size: 22px; font-weight: 300; }
+    .balance-text .description { font-size: 14px; font-weight: 300; color: var(--medium-text); }
+    .share-btn { display: flex; justify-content: center; align-items: center; }
+    .share-btn svg { margin-right: 10px; }
+    .receipt-app-footer { padding: 16px; text-align: center; background-color: var(--background-gray); }
+    .receipt-app-footer .btn { margin-bottom: 20px; }
+    .footer-link { font-size: 16px; font-weight: 500; color: var(--blue); text-decoration: none; }
+
+    /* --- Barra de NavegaciÃ³n Inferior --- */
+    .bottom-nav { position: absolute; bottom: 0; left: 0; right: 0; height: 60px; background-color: var(--white); display: flex; justify-content: space-around; align-items: center; box-shadow: 0 -1px 3px rgba(0,0,0,0.1); z-index: 100;}
+    .nav-btn { background: none; border: none; display: flex; flex-direction: column; align-items: center; font-size: 10px; color: var(--light-text); }
+    .nav-btn.active { color: var(--blue); }
+    .nav-btn svg { width: 24px; height: 24px; fill: var(--light-text); margin-bottom: 2px; }
+    .nav-btn.active svg { fill: var(--blue); }
+    .nav-btn-qr { background: var(--blue); border: none; border-radius: 50%; width: 56px; height: 56px; margin-bottom: 30px; box-shadow: 0 -2px 10px rgba(52,131,250,0.5); display: flex; align-items: center; justify-content: center; }
+    .nav-btn-qr svg { width: 28px; height: 28px; fill: var(--white); }
+  </style>
+</head>
+<body>
+
+  <div class="mobile-screen">
+
+    <!-- PANTALLA 1: INICIO -->
+    <div id="screen-home" class="screen active">
+      <div class="home-header">
+        <div class="user-greet">
+          <svg viewBox="0 0 24 24"><path d="M12,12A6,6 0 0,1 6,6A6,6 0 0,1 12,0A6,6 0 0,1 18,6A6,6 0 0,1 12,12M12,14C16,14 20,16 20,18V20H4V18C4,16 8,14 12,14Z" /></svg>
+          <span>Hola, mmmmmw</span>
+        </div>
+        <div class="header-actions">
+          <svg viewBox="0 0 24 24"><path d="M21,19V20H3V19L5,17V11C5,7.9 7.03,5.17 10,4.29V4A2,2 0 0,1 12,2A2,2 0 0,1 14,4V4.29C16.97,5.17 19,7.9 19,11V17L21,19M12,22A2,2 0 0,1 10,20H14A2,2 0 0,1 12,22Z" /></svg>
+          <button class="help-btn">Ayuda 24 hs</button>
+        </div>
+      </div>
+      <div class="content-area home-content">
+        <div class="home-balance-card">
+          <div class="balance-info-top">
+            <span>Disponible</span>
+            <a href="#">Ir a movimientos ></a>
+          </div>
+          <div class="balance-amount">
+            <span id="home-balance-display">$ 526.897</span><sup id="home-balance-cents">57</sup>
+            <svg class="eye-icon" viewBox="0 0 24 24"><path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z"/></svg>
+          </div>
+          <div class="investment-banner">
+            <svg viewBox="0 0 24 24"><path d="M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M13,12L16.25,15.25L14.83,16.67L11.58,13.42L12.42,12.58L13,12M12,8V12H11.95L8.33,15.61L6.92,14.2L10.53,10.59C10.78,10.34 11,10.03 11,9.7V8H12Z" /></svg>
+            <span>Tu inversiÃ³n estÃ¡ pendiente</span>
+            <span class="investment-yield"><svg viewBox="0 0 24 24"><path d="M7,15L12,10L17,15H7Z" /></svg> 31,4%</span>
+            <a href="#">Empezar</a>
+          </div>
+        </div>
+        <div class="home-actions">
+           <div class="action-btn"><div class="icon-bg"><svg viewBox="0 0 24 24"><path d="M14,12L10,8V11H2V13H10V16M22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2A10,10 0 0,1 22,12M20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12Z" /></svg></div><span>Ingresar</span></div>
+           <div class="action-btn" id="btn-go-to-contact"><div class="icon-bg"><svg viewBox="0 0 24 24"><path d="M17,17H7V14L3,18L7,22V19H19V13H17M7,7H17V10L21,6L17,2V5H5V11H7V7Z" /></svg></div><span>Transferir</span></div>
+           <div class="action-btn"><div class="icon-bg"><svg viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M10,12L14,16V13H22V11H14V8L10,12Z" /></svg></div><span>Sacar</span></div>
+           <div class="action-btn"><div class="icon-bg"><svg viewBox="0 0 24 24"><path d="M20,2H4C2.9,2 2,2.9 2,4V20C2,21.1 2.9,22 4,22H20C21.1,22 22,21.1 22,20V4C22,2.9 21.1,2 20,2M20,20H4V4H20V20M12,6A3,3 0 0,0 9,9C9,10.66 10.34,12 12,12C13.66,12 15,10.66 15,9A3,3 0 0,0 12,6M18,18H6V17C6,15 10,13.9 12,13.9C14,13.9 18,15 18,17V18Z" /></svg></div><span>Tus alias</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANTALLA 2: A QUIÃ‰N TRANSFERIR -->
+    <div id="screen-contact" class="screen">
+      <div class="app-header-white">
+        <button class="icon-btn back-btn" data-target="screen-home"><svg viewBox="0 0 24 24"><path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" /></svg></button>
+        <h2>Â¿A quiÃ©n le querÃ©s transferir?</h2>
+        <button class="icon-btn"><svg viewBox="0 0 24 24"><path d="M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8M12,10A2,2 0 0,0 10,12A2,2 0 0,0 12,14A2,2 0 0,0 14,12A2,2 0 0,0 12,10M10,22C9.75,22 9.5,21.9 9.3,21.7L4.3,16.7C3.9,16.3 3.9,15.7 4.3,15.3L9.3,10.3C9.7,9.9 10.3,9.9 10.7,10.3L15.7,15.3C16.1,15.7 16.1,16.3 15.7,16.7L10.7,21.7C10.5,21.9 10.25,22 10,22M13.2,6L12,4.8L10.8,6L7,2H17L13.2,6Z" /></svg></button>
+        <button class="icon-btn"><svg viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,19.2C11.3,19.2 10.7,19 10.3,18.6L9.8,18.1C9,17.3 8.5,16.3 8.5,15.2V14.8C8.5,13 9.3,11.5 10.8,10.8L11.2,10.6C11.6,10.4 12.4,10.4 12.8,10.6L13.2,10.8C14.7,11.5 15.5,13 15.5,14.8V15.2C15.5,16.3 15,17.3 14.2,18.1L13.7,18.6C13.3,19 12.7,19.2 12,19.2M12,6.5A1.8,1.8 0 0,1 13.8,8.3A1.8,1.8 0 0,1 12,10A1.8,1.8 0 0,1 10.2,8.3A1.8,1.8 0 0,1 12,6.5Z" /></svg></button>
+      </div>
+      <div class="content-area">
+        <div class="search-box">
+          <input type="text" id="recipient-name-input" placeholder="Alias, CBU/CVU, celular o nombre">
+          <svg viewBox="0 0 24 24"><path d="M4,4H7L9,2H15L17,4H20A2,2 0 0,1 22,6V18A2,2 0 0,1 20,20H4A2,2 0 0,1 2,18V6A2,2 0 0,1 4,4M12,7A5,5 0 0,0 7,12A5,5 0 0,0 12,17A5,5 0 0,0 17,12A5,5 0 0,0 12,7M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9Z" /></svg>
+        </div>
+        <div class="section-header">
+            <p class="section-title">Sugeridos</p>
+            <button class="favorites-btn">Favoritos</button>
+        </div>
+        <div id="sugeridos-list" class="contact-list"></div>
+        <p class="section-title">Recientes</p>
+        <div id="recientes-list" class="contact-list"></div>
+      </div>
+    </div>
+
+    <!-- PANTALLA 3: INGRESAR MONTO -->
+    <div id="screen-amount" class="screen">
+      <div class="app-header-white">
+        <button class="icon-btn back-btn" data-target="screen-contact"><svg viewBox="0 0 24 24"><path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" /></svg></button>
+      </div>
+      <div class="content-area">
+        <div class="column-center">
+          <div class="recipient-summary">
+            <div class="recipient-initials" id="amount-recipient-initials"></div>
+            <span id="amount-recipient-name"></span>
+          </div>
+          <div class="amount-input-container">
+            <span class="currency-symbol">$</span>
+            <span id="amount-display">0</span>
+            <div class="cursor"></div>
+            <input type="number" id="amount-input" inputmode="decimal" step="0.01">
+          </div>
+          <p class="available-balance">Dinero disponible: <span id="amount-balance-display"></span> <svg class="eye-icon" viewBox="0 0 24 24"><path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z"/></svg></p>
+          <button class="quick-amount" id="quick-amount-1">$ 1</button>
+          <div class="motive">Motivo: Varios <svg viewBox="0 0 24 24"><path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z" /></svg></div>
+        </div>
+        <div class="main-footer">
+            <button id="btn-go-to-confirm" class="btn btn-primary" disabled>Continuar</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- PANTALLA 4: CONFIRMAR TRANSFERENCIA -->
+    <div id="screen-confirm" class="screen">
+       <div class="app-header-white">
+        <button class="icon-btn back-btn" data-target="screen-amount"><svg viewBox="0 0 24 24"><path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" /></svg></button>
+      </div>
+      <div class="content-area confirm-content">
+        <div class="confirm-recipient">
+            <div class="confirm-icon"><svg viewBox="0 0 24 24"><path d="M14,6H10V4H14M20,10H4V20H20M20,8A2,2 0 0,1 18,6V4A2,2 0 0,0 16,2H8A2,2 0 0,0 6,4V6A2,2 0 0,1 4,8V10H2V8A4,4 0 0,1 6,4H8V2H16V4H18A4,4 0 0,1 22,8V10H20Z" /></svg></div>
+            <h2 id="confirm-recipient-name"></h2>
+            <p>Mercado Pago</p>
+        </div>
+        <div class="confirm-total">
+            <span>Total</span>
+            <span id="confirm-total-amount"></span>
+        </div>
+        <div class="confirm-payment-method">
+            <div class="payment-card-logo"></div>
+            <div class="payment-card-text">
+                <span id="payment-card-balance"></span>
+                <span class="payment-card-label">DINERO DISPONIBLE</span>
+            </div>
+            <div class="card-ghost-text">MERCADO PAGO</div>
+        </div>
+        <div class="commission-banner">Sin comisiÃ³n</div>
+      </div>
+       <div class="main-footer">
+        <button id="btn-do-transfer" class="btn btn-primary">Transferir</button>
+      </div>
+    </div>
+
+    <!-- PANTALLA 5: COMPROBANTE FINAL -->
+    <div id="screen-receipt" class="screen">
+      <div class="receipt-background">
+        <header class="receipt-header">
+          <svg class="close-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L13 13" stroke="white" stroke-width="2" stroke-linecap="round"/><path d="M13 1L1 13" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+        </header>
+        <main class="receipt-app-content">
+          <div class="card confirmation-card">
+            <div class="confirmation-text">
+              <h1>Â¡Listo! Le transferiste a <span id="receipt-recipient-name"></span></h1>
+              <p>A su cuenta de Mercado Pago</p>
+            </div>
+            <div class="profile-icon">
+              <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="24" r="23.5" stroke="#00A650"/><path d="M24 18C26.2091 18 28 16.2091 28 14C28 11.7909 26.2091 10 24 10C21.7909 10 20 11.7909 20 14C20 16.2091 21.7909 18 24 18Z" stroke="#00A650" stroke-width="1.5"/><path d="M32 29.2143C32 24.6789 28.4183 21 24 21C19.5817 21 16 24.6789 16 29.2143V32H32V29.2143Z" stroke="#00A650" stroke-width="1.5"/><circle cx="35" cy="35" r="7" fill="#00A650"/><path d="M32.5 35L34.5 37L38 33" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+          <div class="card action-card">
+            <div class="balance-info">
+              <div class="wallet-icon-container">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 6.85714C21 5.27929 19.6642 4 18 4H4C2.33579 4 1 5.27929 1 6.85714V19.1429C1 20.7207 2.33579 22 4 22H18C19.6642 22 21 20.7207 21 19.1429V6.85714Z" fill="#333333"/><path fill-rule="evenodd" clip-rule="evenodd" d="M1 8H23V18C23 19.6569 21.6569 21 20 21H4C2.34315 21 1 19.6569 1 18V8Z" fill="#333333"/><circle cx="19" cy="11" r="2" fill="#FFDA1A"/></svg>
+              </div>
+              <div class="balance-text">
+                <p class="amount" id="receipt-transfer-amount">$ 1</p>
+                <p class="description">Dinero transferido</p>
+              </div>
+            </div>
+            <button class="btn btn-primary share-btn">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 16.08C17.24 16.08 16.56 16.38 16.04 16.85L8.91 12.7C8.96 12.47 9 12.24 9 12C9 11.76 8.96 11.53 8.91 11.3L15.96 7.22C16.5 7.69 17.21 8 18 8C19.66 8 21 6.66 21 5C21 3.34 19.66 2 18 2C16.34 2 15 3.34 15 5C15 5.24 15.04 5.47 15.09 5.7L8.04 9.78C7.5 9.31 6.79 9 6 9C4.34 9 3 10.34 3 12C3 13.66 4.34 15 6 15C6.79 15 7.5 14.69 8.04 14.22L15.16 18.35C15.11 18.56 15.08 18.78 15.08 19C15.08 20.66 16.34 22 18 22C19.66 22 21 20.66 21 19C21 17.34 19.66 16.08 18 16.08Z" fill="white"/></svg>
+              <span>Compartir comprobante</span>
+            </button>
+          </div>
+        </main>
+        <footer class="receipt-app-footer">
+          <button id="btn-new-transfer" class="btn btn-primary">Hacer otra transferencia</button>
+          <a href="#" id="btn-back-to-home" class="footer-link">Volver al inicio</a>
+        </footer>
+      </div>
+    </div>
+    
+    <!-- Barra de NavegaciÃ³n Inferior -->
+    <div id="bottom-nav" class="bottom-nav">
+        <button class="nav-btn active" id="nav-btn-home"><svg viewBox="0 0 24 24"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z" /></svg><span>Inicio</span></button>
+        <button class="nav-btn"><svg viewBox="0 0 24 24"><path d="M13.5,8H12V13.5L16.28,15.9L17,14.66L13.5,12.8V8M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12C22,6.5 17.5,2 12,2M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20Z" /></svg><span>Actividad</span></button>
+        <button class="nav-btn-qr"><svg viewBox="0 0 24 24"><path d="M4,4H10V10H4V4M20,4V10H14V4H20M14,14H20V20H14V14M4,14H10V20H4V14M12,6H6V8H12V6M6,12V10H8V12H6M12,10V12H10V10H12M10,6V4H12V6H10M8,10V8H10V10H8M8,4V6H6V4H8M6,16H8V18H6V16M12,18H10V16H12V18M10,14V16H8V14H10M12,14H14V12H12V14M16,12H18V10H16V12M18,6V8H16V6H18M16,14H18V16H16V14M14,18H16V16H14V18M18,18H20V20L18,20V18M4,20H6V18H4V20M8,20V18H10L10,20H8M12,20L12,18H14V20H12M2,2V6H0V2A2,2 0 0,1 2,0H6V2H2M22,20V18H24V22H20V20H22M2,18H0V14H2V18M22,6V2H18V0H22A2,2 0 0,1 24,2V6H22Z" /></svg></button>
+        <button class="nav-btn"><svg viewBox="0 0 24 24"><path d="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.45,13.97L5.82,21L12,17.27Z" /></svg><span>Beneficios</span></button>
+        <button class="nav-btn"><svg viewBox="0 0 24 24"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z" /></svg><span>MÃ¡s</span></button>
+    </div>
+
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        let state = {
+            balance: 526897.57,
+            recipientName: '',
+            transferAmount: 0
+        };
+
+        const fakeContacts = [
+            { name: 'Ian Maximo Benitez', initials: 'IB' },
+            { name: 'Brenda Solis', initials: 'BS' },
+            { name: 'Ricardo Gomez', initials: 'RG' },
+            { name: 'Javier Benegas', initials: 'JB' },
+            { name: 'Valeria Ramirez', initials: 'VR' },
+            { name: 'Matias Cruz', initials: 'MC' }
+        ];
+
+        const screens = document.querySelectorAll('.screen');
+        const bottomNav = document.getElementById('bottom-nav');
+        const homeBalanceDisplay = document.getElementById('home-balance-display');
+        const homeBalanceCents = document.getElementById('home-balance-cents');
+        const amountBalanceDisplay = document.getElementById('amount-balance-display');
+        const paymentCardBalance = document.getElementById('payment-card-balance');
+        const amountRecipientName = document.getElementById('amount-recipient-name');
+        const confirmRecipientName = document.getElementById('confirm-recipient-name');
+        const receiptRecipientName = document.getElementById('receipt-recipient-name');
+        const amountRecipientInitials = document.getElementById('amount-recipient-initials');
+        const confirmTotalAmount = document.getElementById('confirm-total-amount');
+        const receiptTransferAmount = document.getElementById('receipt-transfer-amount');
+        const recipientNameInput = document.getElementById('recipient-name-input');
+        const amountInput = document.getElementById('amount-input');
+        const amountDisplay = document.getElementById('amount-display');
+        const btnGoToConfirm = document.getElementById('btn-go-to-confirm');
+
+        const formatCurrency = (value, showSymbol = true) => {
+            const options = { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: 2 };
+            const formatted = value.toLocaleString('es-AR', options);
+            return showSymbol ? `$ ${formatted}` : formatted;
+        };
+
+        const renderContactList = () => {
+            const sugeridosList = document.getElementById('sugeridos-list');
+            const recientesList = document.getElementById('recientes-list');
+            sugeridosList.innerHTML = '';
+            recientesList.innerHTML = '';
+
+            const createContactElement = (contact) => {
+                const contactEl = document.createElement('div');
+                contactEl.className = 'contact-item';
+                contactEl.innerHTML = `
+                    <div class="contact-initials">${contact.initials}</div>
+                    <span class="contact-name">${contact.name}</span>
+                    <svg class="contact-options" viewBox="0 0 24 24"><path d="M12,16A2,2 0 0,1 14,18A2,2 0 0,1 12,20A2,2 0 0,1 10,18A2,2 0 0,1 12,16M12,10A2,2 0 0,1 14,12A2,2 0 0,1 12,14A2,2 0 0,1 10,12A2,2 0 0,1 12,10M12,4A2,2 0 0,1 14,6A2,2 0 0,1 12,8A2,2 0 0,1 10,6A2,2 0 0,1 12,4Z" /></svg>
+                `;
+                contactEl.addEventListener('click', () => selectContact(contact.name));
+                return contactEl;
+            };
+
+            fakeContacts.slice(0, 3).forEach(contact => {
+                sugeridosList.appendChild(createContactElement(contact));
+            });
+            fakeContacts.slice(3, 6).forEach(contact => {
+                recientesList.appendChild(createContactElement(contact));
+            });
+        };
+
+        const selectContact = (name) => {
+            state.recipientName = name;
+            recipientNameInput.value = name;
+            updateUI();
+            showScreen('screen-amount');
+        };
+
+        const updateUI = () => {
+            const balanceParts = state.balance.toFixed(2).split('.');
+            homeBalanceDisplay.textContent = `$ ${parseInt(balanceParts[0]).toLocaleString('es-AR')}`;
+            homeBalanceCents.textContent = balanceParts[1];
+            
+            const fullBalanceFormatted = formatCurrency(state.balance);
+            amountBalanceDisplay.textContent = fullBalanceFormatted;
+            paymentCardBalance.textContent = fullBalanceFormatted;
+
+            amountRecipientName.textContent = state.recipientName;
+            confirmRecipientName.textContent = state.recipientName;
+            receiptRecipientName.textContent = state.recipientName;
+            if (state.recipientName) {
+                const initials = state.recipientName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                amountRecipientInitials.textContent = initials;
+            }
+            
+            confirmTotalAmount.textContent = formatCurrency(state.transferAmount);
+            receiptTransferAmount.textContent = formatCurrency(state.transferAmount);
+        };
+
+        const showScreen = (screenId) => {
+            const isReceipt = screenId === 'screen-receipt';
+            bottomNav.style.display = isReceipt ? 'none' : 'flex';
+            screens.forEach(s => s.classList.toggle('active', s.id === screenId));
+            
+            if (screenId === 'screen-amount') {
+                setTimeout(() => amountInput.focus(), 250);
+            }
+        };
+
+        const resetState = () => {
+            state.recipientName = ''; 
+            state.transferAmount = 0;
+            recipientNameInput.value = ''; 
+            amountInput.value = ''; 
+            amountDisplay.textContent = '0';
+            btnGoToConfirm.disabled = true;
+        };
+        
+        const goHome = () => {
+            resetState(); 
+            updateUI(); 
+            showScreen('screen-home');
+            document.querySelector('.nav-btn.active')?.classList.remove('active');
+            document.getElementById('nav-btn-home').classList.add('active');
+        };
+
+        recipientNameInput.addEventListener('input', () => {
+            btnGoToConfirm.disabled = recipientNameInput.value.trim() === '';
+        });
+
+        amountInput.addEventListener('input', () => {
+            const value = parseFloat(amountInput.value) || 0;
+            amountDisplay.textContent = value.toLocaleString('es-AR', {minimumFractionDigits: 0, maximumFractionDigits: 2});
+            btnGoToConfirm.disabled = value <= 0 || value > state.balance;
+        });
+
+        document.getElementById('quick-amount-1').addEventListener('click', () => {
+            amountInput.value = '1';
+            amountInput.dispatchEvent(new Event('input'));
+        });
+
+        document.getElementById('btn-go-to-contact').addEventListener('click', () => showScreen('screen-contact'));
+        
+        btnGoToConfirm.addEventListener('click', () => {
+            if (recipientNameInput.value.trim() !== '') {
+                state.recipientName = recipientNameInput.value;
+            }
+            state.transferAmount = parseFloat(amountInput.value) || 0;
+            updateUI();
+            showScreen('screen-confirm');
+        });
+
+        document.getElementById('btn-do-transfer').addEventListener('click', () => {
+            if (state.balance >= state.transferAmount) {
+                state.balance -= state.transferAmount;
+                updateUI();
+                showScreen('screen-receipt');
+            } else {
+                alert("Saldo insuficiente");
+            }
+        });
+
+        document.querySelectorAll('.back-btn').forEach(btn => btn.addEventListener('click', (e) => showScreen(e.currentTarget.dataset.target)));
+        document.getElementById('btn-new-transfer').addEventListener('click', goHome);
+        document.getElementById('btn-back-to-home').addEventListener('click', (e) => { e.preventDefault(); goHome(); });
+        document.getElementById('nav-btn-home').addEventListener('click', goHome);
+
+        updateUI();
+        renderContactList();
+    });
+  </script>
+</body>
+</html>
